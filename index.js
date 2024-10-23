@@ -24,7 +24,7 @@ app.use(morgan("dev"));
 
 // Configurer le middleware CORS
 app.use(cors({
-  origin: "https://admin.ritzglobal.org, https://ritzglobal.org", // Autoriser uniquement ce domaine
+  origin: "https://admin.ritzglobal.org", // Autoriser uniquement ce domaine
   methods: "GET,POST,PUT,DELETE", // Méthodes HTTP autorisées
   credentials: true // Autoriser les en-têtes d'identification
 }));
