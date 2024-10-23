@@ -21,10 +21,19 @@ const cors = require("cors");
 
 dbConnect();
 app.use(morgan("dev"));
-app.use(cors());
+
+// Configurer le middleware CORS
+app.use(cors({
+  origin: "https://admin.ritzglobal.org, https://ritzglobal.org", // Autoriser uniquement ce domaine
+  methods: "GET,POST,PUT,DELETE", // Méthodes HTTP autorisées
+  credentials: true // Autoriser les en-têtes d'identification
+}));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+// Définir les routes
 app.use("/api/user", authRouter);
 app.use("/api/product", productRouter);
 app.use("/api/blog", blogRouter);
@@ -41,9 +50,10 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
+// Gestion des erreurs
 app.use(notFound);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Server is running  at PORT ${PORT}`);
+  console.log(`Server is running at PORT ${PORT}`);
 });
