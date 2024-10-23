@@ -2,7 +2,9 @@ const bodyParser = require("body-parser");
 const express = require("express");
 const dbConnect = require("./config/dbConnect");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
+const app = express();
 const dotenv = require("dotenv").config();
+const PORT = 5001;
 const authRouter = require("./routes/authRoute");
 const productRouter = require("./routes/productRoute");
 const blogRouter = require("./routes/blogRoute");
@@ -17,42 +19,13 @@ const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const cors = require("cors");
 
-const app = express();
-const PORT = 5001;
-
-// Connexion à la base de données
 dbConnect();
-
-// Middleware de journalisation
 app.use(morgan("dev"));
-
-// Configuration du middleware CORS
-const allowedOrigins = ["https://admin.ritzglobal.org", "https://ritzglobal.org", "http://localhost:3000"];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // Vérifier si l'origine est dans la liste des origines autorisées
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Inclure toutes les méthodes autorisées
-  credentials: true, // Permettre l'envoi des cookies et des en-têtes d'identification
-  allowedHeaders: ["Content-Type", "Authorization"], // Spécifiez les en-têtes autorisés
-  optionsSuccessStatus: 200 // Pour certains navigateurs plus anciens
-}));
-
-// Supporter les requêtes prévol (OPTIONS)
-app.options('*', cors());
-
-// Middleware pour le traitement du corps des requêtes
+app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// Routes de l'application
 app.use("/api/user", authRouter);
 app.use("/api/product", productRouter);
 app.use("/api/blog", blogRouter);
@@ -66,14 +39,14 @@ app.use("/api/upload", uploadRouter);
 
 // Route pour la racine
 app.get('/', (req, res) => {
-  res.send('API is running...');
+    res.send('API is running...');
 });
 
-// Gestion des erreurs
 app.use(notFound);
 app.use(errorHandler);
 
-// Démarrage du serveur
 app.listen(PORT, () => {
-  console.log(`Server is running at PORT ${PORT}`);
-});
+    console.log(`Server is running  at PORT ${PORT}`);
+  });
+
+module.exports = app; // Exporter l'application
