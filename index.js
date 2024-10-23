@@ -39,7 +39,9 @@ app.use(cors({
     }
   },
   methods: "GET,POST,PUT,DELETE",
-  credentials: true // Permettre l'envoi des cookies et des en-têtes d'identification
+  credentials: true, // Permettre l'envoi des cookies et des en-têtes d'identification
+  allowedHeaders: ["Content-Type", "Authorization"], // Spécifiez les en-têtes autorisés
+  optionsSuccessStatus: 200 // Pour les navigateurs anciens
 }));
 
 // Middleware pour le traitement du corps des requêtes
