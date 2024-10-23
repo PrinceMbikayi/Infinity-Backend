@@ -1,49 +1,53 @@
-const bodyParser = require("body-parser");
 const express = require("express");
+const bodyParser = require("body-parser");
 const dbConnect = require("./config/dbConnect");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
-const app = express();
 const dotenv = require("dotenv").config();
-const PORT = 5001;
-const authRouter = require("./routes/authRoute");
-const productRouter = require("./routes/productRoute");
-const blogRouter = require("./routes/blogRoute");
-const categoryRouter = require("./routes/prodcategoryRoute");
-const blogcategoryRouter = require("./routes/blogCatRoute");
-const brandRouter = require("./routes/brandRoute");
-const colorRouter = require("./routes/colorRoute");
-const enqRouter = require("./routes/enqRoute");
-const couponRouter = require("./routes/couponRoute");
-const uploadRouter = require("./routes/uploadRoute");
+const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
-const cors = require("cors");
 
+const app = express();
+const PORT = 5001;
+
+// Connexion à la base de données
 dbConnect();
+
+// Middleware de journalisation
 app.use(morgan("dev"));
 
-// Configurer le middleware CORS
+// Configuration du middleware CORS
+const allowedOrigins = ["https://admin.ritzglobal.org", "https://ritzglobal.org"];
+
 app.use(cors({
-  origin: "https://admin.ritzglobal.org", // Autoriser uniquement ce domaine
-  methods: "GET,POST,PUT,DELETE", // Méthodes HTTP autorisées
-  credentials: true // Autoriser les en-têtes d'identification
+  origin: function (origin, callback) {
+    // Vérifier si l'origine est dans la liste des origines autorisées
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: "GET,POST,PUT,DELETE",
+  credentials: true // Permettre l'envoi des cookies et des en-têtes d'identification
 }));
 
+// Middleware pour le traitement du corps des requêtes
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// Définir les routes
-app.use("/api/user", authRouter);
-app.use("/api/product", productRouter);
-app.use("/api/blog", blogRouter);
-app.use("/api/category", categoryRouter);
-app.use("/api/blogcategory", blogcategoryRouter);
-app.use("/api/brand", brandRouter);
-app.use("/api/coupon", couponRouter);
-app.use("/api/color", colorRouter);
-app.use("/api/enquiry", enqRouter);
-app.use("/api/upload", uploadRouter);
+// Routes de l'application
+app.use("/api/user", require("./routes/authRoute"));
+app.use("/api/product", require("./routes/productRoute"));
+app.use("/api/blog", require("./routes/blogRoute"));
+app.use("/api/category", require("./routes/prodcategoryRoute"));
+app.use("/api/blogcategory", require("./routes/blogCatRoute"));
+app.use("/api/brand", require("./routes/brandRoute"));
+app.use("/api/coupon", require("./routes/couponRoute"));
+app.use("/api/color", require("./routes/colorRoute"));
+app.use("/api/enquiry", require("./routes/enqRoute"));
+app.use("/api/upload", require("./routes/uploadRoute"));
 
 // Route pour la racine
 app.get('/', (req, res) => {
@@ -54,6 +58,7 @@ app.get('/', (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
+// Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`Server is running at PORT ${PORT}`);
 });
