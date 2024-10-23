@@ -2,16 +2,20 @@ const multer = require("multer");
 const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "../public/images/"));
-  },
-  filename: function (req, file, cb) {
-    const uniquesuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + "-" + uniquesuffix + ".jpeg");
+const cloudinary = require("./cloudinaryConfig"); // Importer la configuration Cloudinary
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+// Configuration de multer pour Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "products", // Dossier où les images seront stockées dans Cloudinary
+    format: async (req, file) => "jpeg", // Toujours convertir en format JPEG
+    public_id: (req, file) => Date.now() + "-" + file.originalname, // Nom unique du fichier
   },
 });
 
+// Filtrage des fichiers pour accepter uniquement les images
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image")) {
     cb(null, true);
@@ -20,39 +24,28 @@ const multerFilter = (req, file, cb) => {
   }
 };
 
+// Configuration de l'upload avec multer
 const uploadPhoto = multer({
   storage: storage,
   fileFilter: multerFilter,
-  limits: { fileSize: 1000000 },
+  limits: { fileSize: 1000000 }, // Limite de taille de fichier (1MB)
 });
 
+// Middleware pour redimensionner l'image (facultatif, car Cloudinary peut le faire directement)
 const productImgResize = async (req, res, next) => {
   if (!req.files) return next();
   await Promise.all(
     req.files.map(async (file) => {
-      await sharp(file.path)
+      const result = await sharp(file.path)
         .resize(300, 300)
         .toFormat("jpeg")
         .jpeg({ quality: 90 })
-        .toFile(`public/images/products/${file.filename}`);
-      fs.unlinkSync(`public/images/products/${file.filename}`);
+        .toBuffer();
+      await cloudinary.uploader.upload_stream({ resource_type: "image" });
+      fs.unlinkSync(file.path);
     })
   );
   next();
 };
 
-const blogImgResize = async (req, res, next) => {
-  if (!req.files) return next();
-  await Promise.all(
-    req.files.map(async (file) => {
-      await sharp(file.path)
-        .resize(300, 300)
-        .toFormat("jpeg")
-        .jpeg({ quality: 90 })
-        .toFile(`public/images/blogs/${file.filename}`);
-      fs.unlinkSync(`public/images/blogs/${file.filename}`);
-    })
-  );
-  next();
-};
-module.exports = { uploadPhoto, productImgResize, blogImgResize };
+module.exports = { uploadPhoto };

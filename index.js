@@ -27,7 +27,7 @@ dbConnect();
 app.use(morgan("dev"));
 
 // Configuration du middleware CORS
-const allowedOrigins = ["https://admin.ritzglobal.org", "https://ritzglobal.org"];
+const allowedOrigins = ["https://admin.ritzglobal.org", "https://ritzglobal.org", "http://localhost:3000"];
 
 app.use(cors({
   origin: function (origin, callback) {
