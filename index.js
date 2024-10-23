@@ -1,11 +1,21 @@
-const express = require("express");
 const bodyParser = require("body-parser");
+const express = require("express");
 const dbConnect = require("./config/dbConnect");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 const dotenv = require("dotenv").config();
-const cors = require("cors");
+const authRoute = require("./routes/authRoute");
+const productRoute = require("./routes/productRoute");
+const blogRoute = require("./routes/blogRoute");
+const prodcategoryRoute = require("./routes/prodcategoryRoute");
+const blogCatRoute = require("./routes/blogCatRoute");
+const brandRoute = require("./routes/brandRoute");
+const colorRoute = require("./routes/colorRoute");
+const enqRoute = require("./routes/enqRoute");
+const couponRoute = require("./routes/couponRoute");
+const uploadRoute = require("./routes/uploadRoute");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
+const cors = require("cors");
 
 const app = express();
 const PORT = 5001;
@@ -38,16 +48,16 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // Routes de l'application
-app.use("/api/user", require("./routes/authRoute"));
-app.use("/api/product", require("./routes/productRoute"));
-app.use("/api/blog", require("./routes/blogRoute"));
-app.use("/api/category", require("./routes/prodcategoryRoute"));
-app.use("/api/blogcategory", require("./routes/blogCatRoute"));
-app.use("/api/brand", require("./routes/brandRoute"));
-app.use("/api/coupon", require("./routes/couponRoute"));
-app.use("/api/color", require("./routes/colorRoute"));
-app.use("/api/enquiry", require("./routes/enqRoute"));
-app.use("/api/upload", require("./routes/uploadRoute"));
+app.use("/api/user", authRoute);
+app.use("/api/product", productRoute);
+app.use("/api/blog", blogRoute);
+app.use("/api/category", prodcategoryRoute);
+app.use("/api/blogcategory", blogCatRoute);
+app.use("/api/brand", brandRoute);
+app.use("/api/coupon", couponRoute);
+app.use("/api/color", colorRoute);
+app.use("/api/enquiry", enqRoute);
+app.use("/api/upload", uploadRoute);
 
 // Route pour la racine
 app.get('/', (req, res) => {
