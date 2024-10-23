@@ -1,5 +1,5 @@
-const bodyParser = require("body-parser");
 const express = require("express");
+const bodyParser = require("body-parser");
 const dbConnect = require("./config/dbConnect");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 const dotenv = require("dotenv").config();
@@ -38,11 +38,14 @@ app.use(cors({
       callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: "GET,POST,PUT,DELETE",
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Inclure toutes les méthodes autorisées
   credentials: true, // Permettre l'envoi des cookies et des en-têtes d'identification
   allowedHeaders: ["Content-Type", "Authorization"], // Spécifiez les en-têtes autorisés
-  optionsSuccessStatus: 200 // Pour les navigateurs anciens
+  optionsSuccessStatus: 200 // Pour certains navigateurs plus anciens
 }));
+
+// Supporter les requêtes prévol (OPTIONS)
+app.options('*', cors());
 
 // Middleware pour le traitement du corps des requêtes
 app.use(bodyParser.json());
