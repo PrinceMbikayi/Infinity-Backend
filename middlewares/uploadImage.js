@@ -1,16 +1,9 @@
 const multer = require("multer");
 const sharp = require("sharp");
-const path = require("path");
-const fs = require("fs");
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "../public/images/"));
-  },
-  filename: function (req, file, cb) {
-    const uniquesuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + "-" + uniquesuffix + ".jpeg");
-  },
-});
+const { cloudinaryUploadImg } = require("../utils/cloudinary");
+
+// Set storage to memory, so files are stored in memory as buffer
+const storage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image")) {
@@ -20,39 +13,61 @@ const multerFilter = (req, file, cb) => {
   }
 };
 
+// Set up multer with memory storage and file filter
 const uploadPhoto = multer({
   storage: storage,
   fileFilter: multerFilter,
-  limits: { fileSize: 1000000 },
+  limits: { fileSize: 1000000 }, // 1MB limit for file size
 });
 
+// Resize images for products
 const productImgResize = async (req, res, next) => {
   if (!req.files) return next();
-  await Promise.all(
-    req.files.map(async (file) => {
-      await sharp(file.path)
-        .resize(300, 300)
-        .toFormat("jpeg")
-        .jpeg({ quality: 90 })
-        .toFile(`public/images/products/${file.filename}`);
-      fs.unlinkSync(`public/images/products/${file.filename}`);
-    })
-  );
-  next();
+
+  try {
+    await Promise.all(
+      req.files.map(async (file) => {
+        const resizedImageBuffer = await sharp(file.buffer)
+          .resize(300, 300)
+          .toFormat("jpeg")
+          .jpeg({ quality: 90 })
+          .toBuffer(); // Process image in memory
+
+        // Upload resized image to Cloudinary directly
+        const cloudinaryResponse = await cloudinaryUploadImg(resizedImageBuffer);
+        file.cloudinaryUrl = cloudinaryResponse.url; // Save the URL to the file object for later use
+      })
+    );
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Image processing failed" });
+  }
 };
 
+// Resize images for blogs
 const blogImgResize = async (req, res, next) => {
   if (!req.files) return next();
-  await Promise.all(
-    req.files.map(async (file) => {
-      await sharp(file.path)
-        .resize(300, 300)
-        .toFormat("jpeg")
-        .jpeg({ quality: 90 })
-        .toFile(`public/images/blogs/${file.filename}`);
-      fs.unlinkSync(`public/images/blogs/${file.filename}`);
-    })
-  );
-  next();
+
+  try {
+    await Promise.all(
+      req.files.map(async (file) => {
+        const resizedImageBuffer = await sharp(file.buffer)
+          .resize(300, 300)
+          .toFormat("jpeg")
+          .jpeg({ quality: 90 })
+          .toBuffer(); // Process image in memory
+
+        // Upload resized image to Cloudinary directly
+        const cloudinaryResponse = await cloudinaryUploadImg(resizedImageBuffer);
+        file.cloudinaryUrl = cloudinaryResponse.url; // Save the URL to the file object for later use
+      })
+    );
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Image processing failed" });
+  }
 };
+
 module.exports = { uploadPhoto, productImgResize, blogImgResize };

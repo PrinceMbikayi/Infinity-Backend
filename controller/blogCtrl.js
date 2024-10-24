@@ -1,5 +1,7 @@
 const Blog = require("../models/blogModel");
 const User = require("../models/userModel");
+const sharp = require("sharp");
+
 const asyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongodbId");
 const cloudinaryUploadImg = require("../utils/cloudinary");
@@ -160,34 +162,50 @@ const disliketheBlog = asyncHandler(async (req, res) => {
 
 const uploadImages = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  validateMongoDbId(id);
+  validateMongoDbId(id); // Validate MongoDB ID as usual
+
   try {
-    const uploader = (path) => cloudinaryUploadImg(path, "images");
     const urls = [];
     const files = req.files;
+
+    // Loop through the uploaded files
     for (const file of files) {
-      const { path } = file;
-      const newpath = await uploader(path);
+      // Resize the file buffer using sharp (if necessary) and upload to Cloudinary
+      const resizedImageBuffer = await sharp(file.buffer)
+        .resize(300, 300)
+        .toFormat("jpeg")
+        .jpeg({ quality: 90 })
+        .toBuffer();
+
+      // Upload the resized image buffer to Cloudinary
+      const newpath = await cloudinaryUploadImg(resizedImageBuffer);
       console.log(newpath);
+
+      // Push the Cloudinary URL to the urls array
       urls.push(newpath);
-      fs.unlinkSync(path);
     }
+
+    // Update the blog with the newly uploaded image URLs
     const findBlog = await Blog.findByIdAndUpdate(
       id,
       {
         images: urls.map((file) => {
-          return file;
+          return file; // Each file contains Cloudinary info like url, asset_id, public_id
         }),
       },
       {
         new: true,
       }
     );
+
+    // Send the updated blog as a response
     res.json(findBlog);
   } catch (error) {
+    console.error(error);
     throw new Error(error);
   }
 });
+
 
 module.exports = {
   createBlog,
