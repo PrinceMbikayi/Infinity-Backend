@@ -5,7 +5,7 @@ const sendEmail = asyncHandler(async (data, req, res) => {
   let transporter = nodemailer.createTransport({
     host: "smtp.hostinger.com",
     port: 587,
-    secure: true, // true for 465, false for other ports
+    secure: false, // true for 465, false for other ports
     auth: {
       user: "support@ritzglobal.org", // generated ethereal user
       pass: "IMbest01!", // generated ethereal password
