@@ -4,7 +4,7 @@ const asyncHandler = require("express-async-handler");
 const sendEmail = asyncHandler(async (data, req, res) => {
   let transporter = nodemailer.createTransport({
     host: "smtp.hostinger.com",
-    port: 587,
+    port: 465,
     secure: false, // true for 465, false for other ports
     auth: {
       user: "support@ritzglobal.org", // generated ethereal user
