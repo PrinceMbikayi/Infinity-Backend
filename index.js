@@ -72,7 +72,7 @@ app.use("/api/banner", bannerRouter);
 app.use('/api/payments', paymentRoute);
 // Route pour la racine
 app.get('/', (req, res) => {
-  res.send(`API is running on port...${PORT}` );
+  res.send(`API is running on port` );
 });
 
 // Gestion des erreurs
