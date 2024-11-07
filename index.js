@@ -1,8 +1,9 @@
+require("dotenv").config();
+
 const bodyParser = require("body-parser");
 const express = require("express");
 const dbConnect = require("./config/dbConnect");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
-const dotenv = require("dotenv").config();
 const authRouter = require("./routes/authRoute");
 const productRouter = require("./routes/productRoute");
 const blogRouter = require("./routes/blogRoute");
@@ -14,6 +15,8 @@ const enqRouter = require("./routes/enqRoute");
 const couponRouter = require("./routes/couponRoute");
 const uploadRouter = require("./routes/uploadRoute");
 const bannerRouter = require("./routes/bannerRoute");
+const paymentRoute = require('./routes/paymentRoute');
+
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const cors = require("cors");
@@ -65,10 +68,11 @@ app.use("/api/color", colorRouter);
 app.use("/api/enquiry", enqRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api/banner", bannerRouter);
+app.use('/api/payments', paymentRoute);
 
 // Route pour la racine
 app.get('/', (req, res) => {
-  res.send('API is running...');
+  res.send(`API is running on port...${PORT}` );
 });
 
 // Gestion des erreurs

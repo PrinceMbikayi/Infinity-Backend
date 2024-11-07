@@ -45,6 +45,11 @@ var productSchema = new mongoose.Schema(
       },
     ],
     color: [{type:mongoose.Schema.Types.ObjectId,ref:"Color"}],
+    diskSizes: [
+      {
+        size: String,
+      },
+    ],
     tags: String,
     ratings: [
       {
