@@ -81,5 +81,5 @@ app.use(errorHandler);
 
 // Démarrage du serveur
 app.listen(PORT, () => {
-  console.log(`Server is running at PORT ${PORT}`);
+  console.log(`Server is running at PORT`);
 });
