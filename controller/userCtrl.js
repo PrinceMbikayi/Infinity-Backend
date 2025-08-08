@@ -40,6 +40,42 @@ const createUser = asyncHandler(async (req, res) => {
   }
 });
 
+// Create an Admin ----------------------------------------------
+
+const createAdmin = asyncHandler(async (req, res) => {
+  const { email, adminCode, ...userData } = req.body;
+
+  // Verify admin code (you can change this to your preferred admin code)
+  const validAdminCode = "RITZ2025ADMIN";
+  if (adminCode !== validAdminCode) {
+    throw new Error("Invalid admin verification code");
+  }
+
+  // Check if user already exists
+  const findUser = await User.findOne({ email: email });
+
+  if (!findUser) {
+    // Create new admin user
+    const adminData = {
+      ...userData,
+      email,
+      role: "admin",
+    };
+    const newAdmin = await User.create(adminData);
+
+    // Remove password from response
+    const { password, ...adminResponse } = newAdmin.toObject();
+
+    res.json({
+      success: true,
+      message: "Admin account created successfully",
+      admin: adminResponse,
+    });
+  } else {
+    throw new Error("User with this email already exists");
+  }
+});
+
 // Login a user
 const loginUserCtrl = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -64,6 +100,7 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
       lastname: findUser?.lastname,
       email: findUser?.email,
       mobile: findUser?.mobile,
+      profileImage: findUser?.profileImage,
       token: generateToken(findUser?._id),
     });
   } else {
@@ -77,8 +114,9 @@ const loginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   // check if user exists or not
   const findAdmin = await User.findOne({ email });
+  if (!findAdmin) throw new Error("Invalid Credentials");
   if (findAdmin.role !== "admin") throw new Error("Not Authorised");
-  if (findAdmin && (await findAdmin.isPasswordMatched(password))) {
+  if (await findAdmin.isPasswordMatched(password)) {
     const refreshToken = await generateRefreshToken(findAdmin?._id);
     const updateuser = await User.findByIdAndUpdate(
       findAdmin.id,
@@ -97,6 +135,7 @@ const loginAdmin = asyncHandler(async (req, res) => {
       lastname: findAdmin?.lastname,
       email: findAdmin?.email,
       mobile: findAdmin?.mobile,
+      profileImage: findAdmin?.profileImage,
       token: generateToken(findAdmin?._id),
     });
   } else {
@@ -152,14 +191,21 @@ const updatedUser = asyncHandler(async (req, res) => {
   validateMongoDbId(_id);
 
   try {
+    const updateData = {
+      firstname: req?.body?.firstname,
+      lastname: req?.body?.lastname,
+      email: req?.body?.email,
+      mobile: req?.body?.mobile,
+    };
+
+    // Add profileImage if provided
+    if (req?.body?.profileImage) {
+      updateData.profileImage = req.body.profileImage;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       _id,
-      {
-        firstname: req?.body?.firstname,
-        lastname: req?.body?.lastname,
-        email: req?.body?.email,
-        mobile: req?.body?.mobile,
-      },
+      updateData,
       {
         new: true,
       }
@@ -167,6 +213,45 @@ const updatedUser = asyncHandler(async (req, res) => {
     res.json(updatedUser);
   } catch (error) {
     throw new Error(error);
+  }
+});
+
+// Upload profile image
+const uploadProfileImage = asyncHandler(async (req, res) => {
+  console.log("Starting profile image upload...");
+  const { _id } = req.user;
+  validateMongoDbId(_id);
+
+  try {
+    const { cloudinaryUploadImg } = require("../utils/cloudinary");
+    
+    if (!req.file) {
+      console.log("No file provided");
+      return res.status(400).json({ message: "No image file provided" });
+    }
+
+    console.log("File received, uploading to Cloudinary...");
+    // Upload image to cloudinary
+    const uploadedImage = await cloudinaryUploadImg(req.file.buffer);
+    console.log("Cloudinary upload successful:", uploadedImage.url);
+    
+    // Update user with new profile image URL
+    console.log("Updating user in database...");
+    const updatedUser = await User.findByIdAndUpdate(
+      _id,
+      { profileImage: uploadedImage.url },
+      { new: true }
+    );
+    console.log("User updated successfully");
+
+    res.json({
+      message: "Profile image uploaded successfully",
+      profileImage: uploadedImage.url,
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error("Error in uploadProfileImage:", error);
+    res.status(500).json({ message: "Upload failed", error: error.message });
   }
 });
 
@@ -206,11 +291,13 @@ const getallUser = asyncHandler(async (req, res) => {
 // Get a single user
 
 const getaUser = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  validateMongoDbId(id);
+  // If called from /profile route, use authenticated user's ID
+  // If called from /:id route, use the ID from params
+  const userId = req.params.id || req.user._id;
+  validateMongoDbId(userId);
 
   try {
-    const getaUser = await User.findById(id);
+    const getaUser = await User.findById(userId);
     res.json({
       getaUser,
     });
@@ -339,18 +426,17 @@ const getWishlist = asyncHandler(async (req, res) => {
 });
 
 const userCart = asyncHandler(async (req, res) => {
-  const { productId,color,quantity,price ,diskSize} = req.body;
+  const { productId, color, quantity, price, diskSize } = req.body;
   const { _id } = req.user;
   validateMongoDbId(_id);
   try {
-   
     let newCart = await new Cart({
-      userId:_id,
+      userId: _id,
       productId,
       color,
       price,
       quantity,
-      diskSize
+      diskSize,
     }).save();
     res.json(newCart);
   } catch (error) {
@@ -362,9 +448,9 @@ const getUserCart = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   validateMongoDbId(_id);
   try {
-    const cart = await Cart.find({ userId: _id }).populate(
-      "productId"
-    ).populate("color");
+    const cart = await Cart.find({ userId: _id })
+      .populate("productId")
+      .populate("color");
     res.json(cart);
   } catch (error) {
     throw new Error(error);
@@ -377,175 +463,308 @@ const removeProductFromCart = asyncHandler(async (req, res) => {
   console.log(cartItemId);
   validateMongoDbId(_id);
   try {
-    const deleteProductFromCart = await Cart.deleteOne({userId:_id,_id:cartItemId})
+    const deleteProductFromCart = await Cart.deleteOne({
+      userId: _id,
+      _id: cartItemId,
+    });
     res.json(deleteProductFromCart);
   } catch (error) {
     throw new Error(error);
   }
-})
+});
 const updateProductQuantityFromCart = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const { cartItemId,newQuantiy } = req.params;
+  const { cartItemId, newQuantiy } = req.params;
   console.log(cartItemId);
   validateMongoDbId(_id);
   try {
-    const cartItem = await Cart.findOne({ userId: _id, _id: cartItemId })
-    cartItem.quantity = newQuantiy
-    cartItem.save()
+    const cartItem = await Cart.findOne({ userId: _id, _id: cartItemId });
+    cartItem.quantity = newQuantiy;
+    cartItem.save();
     res.json(cartItem);
   } catch (error) {
     throw new Error(error);
   }
-})
-const createOrder = asyncHandler(async(req, res)=> {
-  const {shippingInfo,orderItems,totalPrice,totalPriceAfterDiscount,paymentInfo } = req.body;
+});
+const createOrder = asyncHandler(async (req, res) => {
+  const {
+    shippingInfo,
+    orderItems,
+    totalPrice,
+    totalPriceAfterDiscount,
+    paymentInfo,
+  } = req.body;
   const { _id } = req.user;
   try {
     const order = await Order.create({
-      shippingInfo,orderItems,totalPrice,totalPriceAfterDiscount,paymentInfo,user:_id
-    })
+      shippingInfo,
+      orderItems,
+      totalPrice,
+      totalPriceAfterDiscount,
+      paymentInfo,
+      user: _id,
+    });
     res.json({
       order,
-      success:true
-    })
+      success: true,
+    });
   } catch (error) {
-    throw new Error(error)
+    throw new Error(error);
   }
-})
+});
 
 const getMyOrders = asyncHandler(async (req, res) => {
   const { _id } = req.user;
 
   try {
-    const orders = await Order.find({ user:_id })
+    const orders = await Order.find({ user: _id });
     res.json({
-      orders
-    })
-    
+      orders,
+    });
   } catch (error) {
-    throw new Error(error)
+    throw new Error(error);
   }
-})
+});
 
-const getAllOrders= asyncHandler(async (req, res) => {
+const getAllOrders = asyncHandler(async (req, res) => {
   try {
-    const orders = await Order.find().populate('user')
+    const orders = await Order.find().populate("user");
     res.json({
-      orders
-    })
-    
+      orders,
+    });
   } catch (error) {
-    throw new Error(error)
+    throw new Error(error);
   }
-})
+});
 
-const getSingleOrders= asyncHandler(async (req, res) => {
-  const { id } = req.params
+const getSingleOrders = asyncHandler(async (req, res) => {
+  const { id } = req.params;
   console.log(id);
   try {
-    const orders = await Order.findOne({_id:id}).populate("orderItems.product").populate("orderItems.color")
+    const orders = await Order.findOne({ _id: id })
+      .populate("orderItems.product")
+      .populate("orderItems.color");
     res.json({
-      orders
-    })
-    
+      orders,
+    });
   } catch (error) {
-    throw new Error(error)
+    throw new Error(error);
   }
-})
+});
 
-
-const updateOrder= asyncHandler(async (req, res) => {
-  const { id } = req.params
+const updateOrder = asyncHandler(async (req, res) => {
+  const { id } = req.params;
   console.log(id);
   try {
-    const orders = await Order.findById(id)
+    const orders = await Order.findById(id);
     orders.orderStaus = req.body.status;
-    await orders.save()
+    await orders.save();
 
     res.json({
-      orders
-    })
-    
+      orders,
+    });
   } catch (error) {
-    throw new Error(error)
+    throw new Error(error);
   }
-})
+});
 
 const getMonthWiseOrderIncome = asyncHandler(async (req, res) => {
   try {
-    let monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  let d = new Date();
-  let endDate = "";
-  d.setDate(1)
-  for (let index = 0; index < 11; index++) {
-    d.setMonth(d.getMonth() - 1)
-    endDate = monthNames[d.getMonth()] + " " + d.getFullYear()
-   
-  }
-  const data = await Order.aggregate([
-    {
-      $match: {
-        createdAt: {
-          $lte: new Date(),
-          $gte: new Date(endDate)
-      }
+    let monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    let d = new Date();
+    let endDate = "";
+    d.setDate(1);
+    for (let index = 0; index < 11; index++) {
+      d.setMonth(d.getMonth() - 1);
+      endDate = monthNames[d.getMonth()] + " " + d.getFullYear();
     }
-    }, {
-      $group: {
-        _id: {
-        month:"$month"
-      },amount:{$sum:"$totalPriceAfterDiscount"},count: { $sum: 1 }
-    }
-  }
-  ])
-  res.json(data)
+    const data = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $lte: new Date(),
+            $gte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: "$month",
+          },
+          amount: { $sum: "$totalPriceAfterDiscount" },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    res.json(data);
   } catch (error) {
-    throw new Error(error)
+    throw new Error(error);
   }
-})
-
-
+});
 
 const getYearlyTotalOrders = asyncHandler(async (req, res) => {
   try {
-    let monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  let d = new Date();
-  let endDate = "";
-  d.setDate(1)
-  for (let index = 0; index < 11; index++) {
-    d.setMonth(d.getMonth() - 1)
-    endDate = monthNames[d.getMonth()] + " " + d.getFullYear()
-   
-  }
-  const data = await Order.aggregate([
-    {
-      $match: {
-        createdAt: {
-          $lte: new Date(),
-          $gte: new Date(endDate)
-      }
+    let monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    let d = new Date();
+    let endDate = "";
+    d.setDate(1);
+    for (let index = 0; index < 11; index++) {
+      d.setMonth(d.getMonth() - 1);
+      endDate = monthNames[d.getMonth()] + " " + d.getFullYear();
     }
-    }, {
-      $group: {
-        _id:null,
-        count: { $sum: 1 },
-        amount:{$sum: "$totalPriceAfterDiscount"}
-    }
-  }
-  ])
-  res.json(data)
+    const data = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $lte: new Date(),
+            $gte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          amount: { $sum: "$totalPriceAfterDiscount" },
+        },
+      },
+    ]);
+    res.json(data);
   } catch (error) {
-    throw new Error(error)
- }
-})
+    throw new Error(error);
+  }
+});
+
+// Get Admin Profile ----------------------------------------------
+const getAdminProfile = asyncHandler(async (req, res) => {
+  if (!req.user || !req.user._id) {
+    return res
+      .status(401)
+      .json({ message: "User not authenticated or missing ID" });
+  }
+
+  const { _id } = req.user;
+
+  try {
+    validateMongoDbId(_id);
+  } catch (error) {
+    return res.status(400).json({ message: "Invalid user ID format" });
+  }
+
+  try {
+    const admin = await User.findById(_id).select(
+      "-password -refreshToken -passwordResetToken"
+    );
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+    if (admin.role !== "admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Admin role required." });
+    }
+    res.json(admin);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
+  }
+});
+
+// Update Admin Profile ----------------------------------------------
+const updateAdminProfile = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  validateMongoDbId(_id);
+  try {
+    const admin = await User.findById(_id);
+    if (!admin || admin.role !== "admin") {
+      throw new Error("Admin not found");
+    }
+
+    const { firstname, lastname, email, mobile } = req.body;
+    const updatedAdmin = await User.findByIdAndUpdate(
+      _id,
+      {
+        firstname,
+        lastname,
+        email,
+        mobile,
+      },
+      {
+        new: true,
+      }
+    ).select("-password -refreshToken -passwordResetToken");
+    res.json(updatedAdmin);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+// Update Admin Password ----------------------------------------------
+const updateAdminPassword = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { currentPassword, newPassword } = req.body;
+  validateMongoDbId(_id);
+
+  try {
+    const admin = await User.findById(_id);
+    if (!admin || admin.role !== "admin") {
+      throw new Error("Admin not found");
+    }
+
+    // Verify current password
+    const isPasswordMatched = await admin.isPasswordMatched(currentPassword);
+    if (!isPasswordMatched) {
+      throw new Error("Current password is incorrect");
+    }
+
+    // Update password
+    admin.password = newPassword;
+    admin.passwordChangedAt = Date.now();
+    const updatedAdmin = await admin.save();
+
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
 
 module.exports = {
   createUser,
+  createAdmin,
   loginUserCtrl,
   getallUser,
   getaUser,
   deleteaUser,
   updatedUser,
+  uploadProfileImage,
   blockUser,
   unblockUser,
   handleRefreshToken,
@@ -566,5 +785,8 @@ module.exports = {
   getYearlyTotalOrders,
   getAllOrders,
   getSingleOrders,
-  updateOrder
+  updateOrder,
+  getAdminProfile,
+  updateAdminProfile,
+  updateAdminPassword,
 };

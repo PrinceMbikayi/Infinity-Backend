@@ -26,14 +26,20 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
   }
 });
 const isAdmin = asyncHandler(async (req, res, next) => {
- 
+  if (!req.user) {
+    return res.status(401).json({ message: "User not authenticated" });
+  }
+  
   const { email } = req.user;
   
   const adminUser = await User.findOne({ email });
-  if (adminUser.role !== "admin") {
-    throw new Error("You are not an admin");
-  } else {
-    next();
+  
+  if (!adminUser) {
+    return res.status(404).json({ message: "User not found" });
   }
+  if (adminUser.role !== "admin") {
+    return res.status(403).json({ message: "You are not an admin" });
+  }
+  next();
 });
 module.exports = { authMiddleware, isAdmin };

@@ -48,6 +48,10 @@ var userSchema = new mongoose.Schema(
     passwordChangedAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,
+    profileImage: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

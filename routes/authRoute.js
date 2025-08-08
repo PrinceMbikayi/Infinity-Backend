@@ -1,11 +1,13 @@
 const express = require("express");
 const {
   createUser,
+  createAdmin,
   loginUserCtrl,
   getallUser,
   getaUser,
   deleteaUser,
   updatedUser,
+  uploadProfileImage,
   blockUser,
   unblockUser,
   handleRefreshToken,
@@ -17,9 +19,9 @@ const {
   getWishlist,
   userCart,
   getUserCart,
- 
+  saveAddress,
   createOrder,
-
+  emptyCart,
   removeProductFromCart,
   updateProductQuantityFromCart,
   getMyOrders,
@@ -28,11 +30,16 @@ const {
   getAllOrders,
   getSingleOrders,
   updateOrder,
+  getAdminProfile,
+  updateAdminProfile,
+  updateAdminPassword,
 } = require("../controller/userCtrl");
 const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { uploadPhoto, profileImgResize } = require("../middlewares/uploadImage");
 const { checkout, paymentVerification } = require("../controller/paymentCtrl");
 const router = express.Router();
 router.post("/register", createUser);
+router.post("/admin-register", createAdmin);
 router.post("/forgot-password-token", forgotPasswordToken);
 
 router.put("/reset-password/:token", resetPassword);
@@ -58,6 +65,14 @@ router.get("/refresh", handleRefreshToken);
 router.get("/logout", logout);
 router.get("/wishlist", authMiddleware, getWishlist);
 router.get("/cart", authMiddleware, getUserCart);
+router.get("/profile", authMiddleware, getaUser);
+
+// Admin Profile Routes - must come before /:id route
+router.get("/admin-profile", authMiddleware, isAdmin, getAdminProfile);
+router.put("/admin-profile", authMiddleware, isAdmin, updateAdminProfile);
+router.put("/admin-password", authMiddleware, isAdmin, updateAdminPassword);
+
+// Generic user route with ID parameter - must come after specific routes
 router.get("/:id", authMiddleware, isAdmin, getaUser);
 router.delete("/delete-product-cart/:cartItemId", authMiddleware, removeProductFromCart);
 router.delete("/update-product-cart/:cartItemId/:newQuantiy", authMiddleware, updateProductQuantityFromCart);
@@ -72,6 +87,7 @@ router.delete("/:id", deleteaUser);
   updateOrderStatus
 ); */
 router.put("/edit-user", authMiddleware, updatedUser);
+router.put("/upload-profile-image", authMiddleware, uploadPhoto.single("image"), profileImgResize, uploadProfileImage);
 router.put("/block-user/:id", authMiddleware, isAdmin, blockUser);
 router.put("/unblock-user/:id", authMiddleware, isAdmin, unblockUser);
 

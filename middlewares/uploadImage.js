@@ -45,6 +45,26 @@ const productImgResize = async (req, res, next) => {
   }
 };
 
+// Resize images for profile
+const profileImgResize = async (req, res, next) => {
+  if (!req.file) return next();
+
+  try {
+    const resizedImageBuffer = await sharp(req.file.buffer)
+      .resize(200, 200)
+      .toFormat("jpeg")
+      .jpeg({ quality: 90 })
+      .toBuffer();
+
+    // Replace the original buffer with the resized one
+    req.file.buffer = resizedImageBuffer;
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Profile image processing failed" });
+  }
+};
+
 // Resize images for blogs
 const blogImgResize = async (req, res, next) => {
   if (!req.files) return next();
@@ -70,4 +90,4 @@ const blogImgResize = async (req, res, next) => {
   }
 };
 
-module.exports = { uploadPhoto, productImgResize, blogImgResize };
+module.exports = { uploadPhoto, productImgResize, profileImgResize, blogImgResize };

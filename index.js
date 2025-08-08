@@ -15,8 +15,8 @@ const enqRouter = require("./routes/enqRoute");
 const couponRouter = require("./routes/couponRoute");
 const uploadRouter = require("./routes/uploadRoute");
 const bannerRouter = require("./routes/bannerRoute");
-const paymentRoute = require('./routes/paymentRoute');
-const webhookRoute = require('./routes/webhookRoute')
+const paymentRoute = require("./routes/paymentRoute");
+const webhookRoute = require("./routes/webhookRoute");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const cors = require("cors");
@@ -31,25 +31,18 @@ dbConnect();
 app.use(morgan("dev"));
 
 // Configuration du middleware CORS
-const allowedOrigins = ["https://admin.ritzglobal.org", "https://ritzglobal.org", "http://localhost:3000", "http://localhost:3001"];
+const corsOptions = {
+  origin: '*', // Autoriser toutes les origines en développement
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
+};
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Vérifier si l'origine est dans la liste des origines autorisées
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Inclure toutes les méthodes autorisées
-  credentials: true, // Permettre l'envoi des cookies et des en-têtes d'identification
-  allowedHeaders: ["Content-Type", "Authorization"], // Spécifiez les en-têtes autorisés
-  optionsSuccessStatus: 200 // Pour certains navigateurs plus anciens
-}));
+app.use(cors(corsOptions));
 
 // Supporter les requêtes prévol (OPTIONS)
-app.options('*', cors());
+app.options("*", cors());
 
 // Middleware pour le traitement du corps des requêtes
 app.use(bodyParser.json());
@@ -57,7 +50,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // Routes de l'application
-app.use('/api/webhook', webhookRoute);
+app.use("/api/webhook", webhookRoute);
 
 app.use("/api/user", authRouter);
 app.use("/api/product", productRouter);
@@ -70,10 +63,10 @@ app.use("/api/color", colorRouter);
 app.use("/api/enquiry", enqRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api/banner", bannerRouter);
-app.use('/api/payments', paymentRoute);
+app.use("/api/payments", paymentRoute);
 // Route pour la racine
-app.get('/', (req, res) => {
-  res.send(`API is running on port` );
+app.get("/", (req, res) => {
+  res.send(`API is running on port`);
 });
 
 // Gestion des erreurs
